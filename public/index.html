@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Send Voice Note</title>
+</head>
+<body>
+    <h1>Send Voice Note</h1>
+    <form id="voiceNoteForm">
+        <label for="phoneNumber">Phone Number:</label>
+        <input type="text" id="phoneNumber" name="phoneNumber" required><br><br>
+
+        <label for="audioFile">Upload Audio:</label>
+        <input type="file" id="audioFile" name="audioFile" accept="audio/*" required><br><br>
+
+        <button type="submit">Send Voice Note</button>
+    </form>
+    <script src="script.js"></script>
+</body>
+</html>
