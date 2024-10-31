@@ -3,25 +3,32 @@ const multer = require("multer");
 const axios = require("axios");
 const twilio = require("twilio");
 const fs = require("fs");
+const path = require("path");
 
 const app = express();
 const upload = multer({ dest: "uploads/" });
 const port = process.env.PORT || 3000;
 
-// GitHub and Twilio credentials
-const GITHUB_TOKEN = "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";
-const GITHUB_USERNAME = "DEXTER-ID-PROJECT";
-const GITHUB_REPO = "storage";
-const accountSid = "AC3703d9bed80e3a199b5d4abc7007d6f4";
-const authToken = "0cb4f4d9765b6217df5ea8c6bcb7e939";
+// Load credentials from environment variables
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const GITHUB_USERNAME = process.env.GITHUB_USERNAME;
+const GITHUB_REPO = process.env.GITHUB_REPO;
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const twilioNumber = process.env.TWILIO_PHONE_NUMBER;
+
 const client = new twilio(accountSid, authToken);
 
 app.use(express.static("public"));
 
 app.post("/send-voice-note", upload.single("audioFile"), async (req, res) => {
     const { phoneNumber } = req.body;
-    const audioFilePath = req.file.path;
-    const fileName = req.file.originalname;
+    const audioFilePath = req.file?.path;
+    const fileName = req.file?.originalname;
+
+    if (!audioFilePath || !phoneNumber) {
+        return res.status(400).json({ message: "Missing audio file or phone number." });
+    }
 
     try {
         // Read file content and encode in Base64
@@ -42,22 +49,29 @@ app.post("/send-voice-note", upload.single("audioFile"), async (req, res) => {
             }
         );
 
+        console.log("GitHub response:", githubResponse.data);
+
         // Retrieve file URL from GitHub
         const mediaUrl = githubResponse.data.content.download_url;
 
         // Send the voice note through Twilio
-        await client.messages.create({
-            from: "whatsapp:+15103425782",
-            to: `whatsapp:${phoneNumber}`,
-            mediaUrl: [mediaUrl],
-        });
-
-        res.json({ message: "Voice note sent successfully!" });
+        try {
+            const message = await client.messages.create({
+                from: `whatsapp:${twilioNumber}`,
+                to: `whatsapp:${phoneNumber}`,
+                mediaUrl: [mediaUrl],
+            });
+            console.log("Twilio message response:", message);
+            res.json({ message: "Voice note sent successfully!" });
+        } catch (twilioError) {
+            console.error("Error from Twilio:", twilioError);
+            return res.status(500).json({ message: "Twilio failed to send voice note." });
+        }
     } catch (error) {
-        console.error(error);
+        console.error("Error sending voice note:", error);
         res.status(500).json({ message: "Failed to send voice note." });
     } finally {
-        fs.unlinkSync(audioFilePath); // Clean up uploaded file
+        if (audioFilePath) fs.unlinkSync(audioFilePath); // Clean up uploaded file
     }
 });
 
